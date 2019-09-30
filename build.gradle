@@ -1,0 +1,23 @@
+plugins {
+	id 'org.springframework.boot' version '2.1.8.RELEASE'
+	id 'io.spring.dependency-management' version '1.0.8.RELEASE'
+	id 'java'
+}
+
+group = 'com.example'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '11'
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	implementation(group: 'org.springframework.boot', name: 'spring-boot-starter-web')
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	implementation(group: 'org.springframework.boot', name: 'spring-boot-starter-actuator')
+	compile(group: 'org.springframework.data', name: 'spring-data-rest-core', version: '2.1.0.RELEASE')
+	compileOnly(group: 'org.projectlombok', name: 'lombok')
+	annotationProcessor(group: 'org.projectlombok', name: 'lombok')
+	implementation("org.javamoney:moneta:1.3")
+}
