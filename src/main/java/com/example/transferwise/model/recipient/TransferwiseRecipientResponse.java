@@ -9,7 +9,7 @@ import lombok.Setter;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class TransferwiseRecipientResponse<T extends TransferwiseBankDetails> {
+public class TransferwiseRecipientResponse<T> {
     private Integer id;
     private Integer profile;
     private String acccountHolderName;

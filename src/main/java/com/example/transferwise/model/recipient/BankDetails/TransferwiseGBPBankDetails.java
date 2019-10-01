@@ -1,6 +1,6 @@
-package com.example.transferwise.model.recipient;
+package com.example.transferwise.model.recipient.BankDetails;
 
-import com.example.transferwise.model.recipient.TransferwiseBankDetails;
+import com.example.transferwise.model.recipient.BankDetails.TransferwiseBankDetails;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

@@ -11,6 +11,6 @@ import lombok.Setter;
 @NoArgsConstructor
 public class TransferwiseTransferStatusResponse {
     private String type;
-    private String Status;
+    private String status;
     private String errorCode;
 }

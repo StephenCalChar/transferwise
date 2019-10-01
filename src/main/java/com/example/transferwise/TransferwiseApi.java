@@ -2,11 +2,10 @@ package com.example.transferwise;
 
 import com.example.transferwise.model.*;
 import com.example.transferwise.model.balance.TransferwiseCheckBalanceResponse;
+import com.example.transferwise.model.quote.SubmitQuoteException;
 import com.example.transferwise.model.quote.TransferWiseQuoteResponse;
 import com.example.transferwise.model.quote.TransferwiseQuote;
-import com.example.transferwise.model.recipient.TransferwiseGBPBankDetails;
-import com.example.transferwise.model.recipient.TransferwiseRecipient;
-import com.example.transferwise.model.recipient.TransferwiseRecipientResponse;
+import com.example.transferwise.model.recipient.*;
 import com.example.transferwise.model.transfer.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -32,6 +31,14 @@ public class TransferwiseApi {
     private static final String TRANSFERS_ENDPOINT = "transfers";
     private static final String PAYMENTS_ENDPOINT = "payments";
     private static final String ACCOUNT_BALANCE_ENDPOINT = "borderless-accounts?profileId=";
+    private static final String INCOMING_PAYMENT_WAITING = "incoming_payment_waiting";
+    private static final String PROCESSING_STATUS = "processing";
+    private static final String FUNDS_CONVERTED_STATUS = "funds_converted";
+    private static final String OUTGOING_PAYMENT_SENT_STATUS = "outgoing_payment_sent";
+    private static final String CANCELLED_PAYMENT = "cancelled";
+    private static final String FUNDS_REFUNDED = "funds_refunded";
+    private static final String BOUNCED_BACK_STATUS = "bounced_back";
+
 
     private RestOperations restOps;
     private AuthToken authToken;
@@ -55,33 +62,39 @@ public class TransferwiseApi {
         return Objects.requireNonNull(responseEntity.getBody()).get(1);
     }
 
-    TransferWiseQuoteResponse submitQuote(TransferwiseQuote transferwiseQuote) {
+    TransferWiseQuoteResponse submitQuote(TransferwiseQuote transferwiseQuote) throws SubmitQuoteException {
         HttpHeaders headers = this.authToken.postHttpHeaders();
         HttpEntity<TransferwiseQuote> entity = new HttpEntity<>(transferwiseQuote, headers);
-        ResponseEntity<TransferWiseQuoteResponse> responseEntity = this.restOps.exchange(
-                BASE_URL + QUOTES_ENDPOINT
-                , HttpMethod.POST
-                , entity
-                , TransferWiseQuoteResponse.class
-        );
-        return responseEntity.getBody();
+        try {
+            ResponseEntity<TransferWiseQuoteResponse> responseEntity = this.restOps.exchange(
+                    BASE_URL + QUOTES_ENDPOINT
+                    , HttpMethod.POST
+                    , entity
+                    , TransferWiseQuoteResponse.class
+            );
+            return responseEntity.getBody();
+        } catch (HttpClientErrorException e) {
+            throw new SubmitQuoteException("Could not create quote" + e.getCause());
+        }
+
 
     }
 
-    //Catch invalid bank details error.
-    //Probably want this to take a type as a parameter.
-    TransferwiseRecipientResponse addRecipient(TransferwiseRecipient transferwiseRecipient)  {
-        HttpHeaders headers = this.authToken.postHttpHeaders();
-        HttpEntity<TransferwiseRecipient> entity = new HttpEntity<>(transferwiseRecipient, headers);
-            ResponseEntity<TransferwiseRecipientResponse<TransferwiseGBPBankDetails>> responseEntity = this.restOps.exchange(
+    TransferwiseRecipientResponse addRecipient(TransferwiseRecipient transferwiseRecipient) throws TransferwiseAddRecipientException {
+        try {
+            HttpHeaders headers = this.authToken.postHttpHeaders();
+            HttpEntity<TransferwiseRecipient> entity = new HttpEntity<>(transferwiseRecipient, headers);
+            ResponseEntity<TransferwiseRecipientResponse> responseEntity = this.restOps.exchange(
                     BASE_URL + ACCOUNTS_ENDPOINT
                     , HttpMethod.POST
                     , entity
-                    , new ParameterizedTypeReference<TransferwiseRecipientResponse<TransferwiseGBPBankDetails>>() {
+                    , new ParameterizedTypeReference<TransferwiseRecipientResponse>() {
                     }
             );
             return responseEntity.getBody();
-
+        } catch (HttpClientErrorException e) {
+            throw new TransferwiseAddRecipientException("Error Creating Recipient" + e.getCause());
+        }
     }
 
     TransferwiseTransferResponse submitTransfer(TransferwiseTransfer transferwiseTransfer) {
@@ -96,17 +109,24 @@ public class TransferwiseApi {
         return responseEntity.getBody();
     }
 
-    TransferwiseTransferStatusResponse fundTransfer(int transferId) {
+    //handle insufficient funds
+    TransferwiseTransferStatusResponse fundTransfer(int transferId) throws TransferwiseFundTransferException {
         HttpHeaders headers = this.authToken.postHttpHeaders();
         HttpEntity<TransferwiseFundTransfer> entity = new HttpEntity<>(new TransferwiseFundTransfer(), headers);
         String transferIdUrl = "/" + transferId + "/";
-        ResponseEntity<TransferwiseTransferStatusResponse> responseEntity = this.restOps.exchange(
-                BASE_URL + TRANSFERS_ENDPOINT + transferIdUrl + PAYMENTS_ENDPOINT
-                , HttpMethod.POST
-                , entity
-                , TransferwiseTransferStatusResponse.class
-        );
-        return responseEntity.getBody();
+        try {
+            ResponseEntity<TransferwiseTransferStatusResponse> responseEntity = this.restOps.exchange(
+                    BASE_URL + TRANSFERS_ENDPOINT + transferIdUrl + PAYMENTS_ENDPOINT
+                    , HttpMethod.POST
+                    , entity
+                    , TransferwiseTransferStatusResponse.class
+            );
+            return responseEntity.getBody();
+        } catch (HttpClientErrorException e) {
+            System.out.println(e.getClass());
+            throw new TransferwiseFundTransferException("Unable to Fund Transfer" + e.getCause());
+        }
+
     }
 
     TransferwiseTransferStatusResponse checkTransferStatus(int transferId) {
@@ -133,4 +153,19 @@ public class TransferwiseApi {
         return Objects.requireNonNull(responseEntity.getBody()).get(0);
     }
 
+    //could use varargs here.
+    List<TransferwiseTransferResponse> getTransfersInProgress(int profileId) {
+        HttpEntity entity = new HttpEntity<>(this.authToken.getHttpHeaders());
+        String statusQueryString = INCOMING_PAYMENT_WAITING + "," + PROCESSING_STATUS + "," + FUNDS_CONVERTED_STATUS + "," +
+                FUNDS_REFUNDED + "," + BOUNCED_BACK_STATUS;
+        System.out.println(BASE_URL + TRANSFERS_ENDPOINT + "/?profile=" + profileId + "&status=" + statusQueryString);
+        ResponseEntity<List<TransferwiseTransferResponse>> responseEntity = this.restOps.exchange(
+                BASE_URL + TRANSFERS_ENDPOINT + "/?profile=" + profileId + "&status=" + statusQueryString
+                , HttpMethod.GET
+                , entity
+                , new ParameterizedTypeReference<List<TransferwiseTransferResponse>>() {
+                }
+        );
+        return responseEntity.getBody();
+    }
 }
