@@ -10,12 +10,11 @@ import lombok.Setter;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class TransferwiseRecipient  {
+public class TransferwiseRecipient<T extends  TransferwiseBankDetails>  {
     private String currency;
     private TransferwiseRecipientType type;
     private Integer profile;
     private String accountHolderName;
     // this will need either an interface or inheritance further down the line as can change depending on region
-    private TransferwiseBankDetails details;
-
+    private T details;
 }

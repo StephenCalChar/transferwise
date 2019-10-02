@@ -44,31 +44,32 @@ public class TransferwiseClient {
     }
 
     // Do you want to return the transfer status from here? Maybe make enum.
-    public void payInstruction(TransferwisePaymentInstruction paymentInstruction) {
+    public TransferwiseTransferStatusResponse payInstruction(TransferwisePaymentInstruction paymentInstruction) throws TransferwiseCurrencyException, TransferwiseAddRecipientException, SubmitQuoteException, TransferwiseFundTransferException {
         // Its possible we want to just set up the payments in the first instance and then have another
         // option for them all to be paid once their is definitely sufficient funds in the account.
-        try {
-            TransferwiseRecipient recipient = this.createRecipient(PROFILE_ID, paymentInstruction);
-            TransferwiseRecipientResponse recipientResponse = this.submitRecipient(recipient);
-            TransferwiseQuote quote = createQuote(PROFILE_ID, paymentInstruction);
-            TransferWiseQuoteResponse quoteResponse = this.submitQuote(quote);
-            TransferwiseTransfer transfer = this.createTransfer(recipientResponse.getId(), quoteResponse.getId(), paymentInstruction);
-            TransferwiseTransferResponse transferResponse = this.submitTransfer(transfer);
-            TransferwiseTransferStatusResponse fundTransferResponse = fundTransfer(transferResponse.getId(), PROFILE_ID);
-            TransferwiseTransferStatusResponse transferStatusResponse = this.transferwiseApi.checkTransferStatus(transferResponse.getId());
-        } catch (TransferwiseAddRecipientException e) {
-            // send back to kafka error with details??
-            e.printStackTrace();
-        } catch (SubmitQuoteException e) {
-            // send back details to kafka?
-            e.printStackTrace();
-        } catch (TransferwiseFundTransferException e) {
-            // Either fund account or send back to Kafka that it has failed
-            e.printStackTrace();
-        } catch (TransferwiseCurrencyException e) {
-            e.printStackTrace();
-            // unrecognised currency
-        }
+        // I think there should also be logic to check whether a recipient exists or not.
+        TransferwiseRecipient recipient = this.createRecipient(PROFILE_ID, paymentInstruction);
+        TransferwiseRecipientResponse recipientResponse = this.submitRecipient(recipient);
+        TransferwiseQuote quote = createQuote(PROFILE_ID, paymentInstruction);
+        TransferWiseQuoteResponse quoteResponse = this.submitQuote(quote);
+        TransferwiseTransfer transfer = this.createTransfer(recipientResponse.getId(), quoteResponse.getId(), paymentInstruction);
+        TransferwiseTransferResponse transferResponse = this.submitTransfer(transfer);
+        TransferwiseTransferStatusResponse fundTransferResponse = this.fundTransfer(transferResponse.getId(), PROFILE_ID);
+        return this.transferwiseApi.checkTransferStatus(transferResponse.getId());
+
+//        } catch (TransferwiseAddRecipientException e) {
+//            // send back to kafka error with details??
+//            e.printStackTrace();
+//        } catch (SubmitQuoteException e) {
+//            // send back details to kafka?
+//            e.printStackTrace();
+//        } catch (TransferwiseFundTransferException e) {
+//            // Either fund account or send back to Kafka that it has failed
+//            e.printStackTrace();
+//        } catch (TransferwiseCurrencyException e) {
+//            e.printStackTrace();
+//            // unrecognised currency
+//        }
 
 
     }
@@ -92,7 +93,7 @@ public class TransferwiseClient {
     private TransferwiseRecipient createRecipient(int profileId, TransferwisePaymentInstruction paymentInstruction) throws TransferwiseCurrencyException {
         switch (paymentInstruction.getTargetCurrency()) {
             case GBP_CURRENCY_CODE:
-                return new TransferwiseRecipient(
+                return new TransferwiseRecipient<>(
                         paymentInstruction.getTargetCurrency()
                         , TransferwiseRecipientType.sort_code
                         , profileId
@@ -100,7 +101,7 @@ public class TransferwiseClient {
                         , this.createBankGBPDetails(paymentInstruction)
                 );
             case EUR_CURRENCY_CODE:
-                return new TransferwiseRecipient(
+                return new TransferwiseRecipient<>(
                         paymentInstruction.getTargetCurrency()
                         , TransferwiseRecipientType.iban
                         , profileId
@@ -108,7 +109,7 @@ public class TransferwiseClient {
                         , this.createBankEURDetails(paymentInstruction)
                 );
             case USD_CURRENCY_CODE:
-                return new TransferwiseRecipient(
+                return new TransferwiseRecipient<>(
                         paymentInstruction.getTargetCurrency()
                         , TransferwiseRecipientType.aba
                         , profileId

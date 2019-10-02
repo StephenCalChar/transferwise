@@ -1,7 +1,12 @@
 package com.example.transferwise;
 
 import com.example.transferwise.model.TransferwisePaymentInstruction;
+import com.example.transferwise.model.quote.SubmitQuoteException;
+import com.example.transferwise.model.recipient.TransferwiseAddRecipientException;
+import com.example.transferwise.model.recipient.TransferwiseCurrencyException;
+import com.example.transferwise.model.transfer.TransferwiseFundTransferException;
 import com.example.transferwise.model.transfer.TransferwiseTransferResponse;
+import com.example.transferwise.model.transfer.TransferwiseTransferStatusResponse;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,11 +40,24 @@ public class TransferwiseGateway {
     @PostMapping({"/submit"})
     public ResponseEntity submitPayment(@RequestBody @Valid TransferwisePaymentInstruction transferwisePaymentInstruction) {
         try {
-            transferwiseClient.payInstruction(transferwisePaymentInstruction);
-            return new ResponseEntity<>( "",HttpStatus.OK);
-            //change this.
-        }catch(Exception e){
+            TransferwiseTransferStatusResponse transferStatusResponse = transferwiseClient.payInstruction(transferwisePaymentInstruction);
+            return new ResponseEntity<TransferwiseTransferStatusResponse>(transferStatusResponse, HttpStatus.OK);
+        } catch (TransferwiseAddRecipientException e) {
+            // send back to kafka error with details??
+            e.printStackTrace();
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        } catch (SubmitQuoteException e) {
+            // send back details to kafka?
+            e.printStackTrace();
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        } catch (TransferwiseFundTransferException e) {
+            // Either fund account or send back to Kafka that it has failed
+            e.printStackTrace();
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        } catch (TransferwiseCurrencyException e) {
+            e.printStackTrace();
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+            // unrecognised currency
         }
 
     }
