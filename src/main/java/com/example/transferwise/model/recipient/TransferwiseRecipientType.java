@@ -5,5 +5,5 @@ import lombok.Getter;
 import java.io.Serializable;
 
 public enum TransferwiseRecipientType {
-    iban, sort_code
+    iban, sort_code, aba
 }

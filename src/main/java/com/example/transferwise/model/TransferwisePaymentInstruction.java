@@ -12,9 +12,7 @@ import javax.money.CurrencyUnit;
 public class TransferwisePaymentInstruction {
     // will this ID be from PaymentInstruction?
     private int id;
-    @NonNull
     private String targetCurrency;
-    @NonNull
     private BigDecimal amount;
     private String accountHolderName;
     private String sortCode;
@@ -26,5 +24,16 @@ public class TransferwisePaymentInstruction {
     private String IBAN;
     private String abartn;
     private String accountType;
+
+    public TransferwisePaymentInstruction(int id, String targetCurrency, BigDecimal amount, String accountHolderName,
+                                          String sortCode, String accountNumber) {
+        this.id=id;
+        this.targetCurrency=targetCurrency;
+        this.amount=amount;
+        this.accountHolderName=accountHolderName;
+        this.sortCode=sortCode;
+        this.accountNumber=accountNumber;
+
+    }
 
 }

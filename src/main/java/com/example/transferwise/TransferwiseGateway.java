@@ -1,6 +1,7 @@
 package com.example.transferwise;
 
 import com.example.transferwise.model.TransferwisePaymentInstruction;
+import com.example.transferwise.model.transfer.TransferwiseTransferResponse;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
+import java.util.List;
 import javax.money.CurrencyUnit;
 import javax.money.Monetary;
 import javax.validation.Valid;
@@ -24,21 +26,12 @@ public class TransferwiseGateway {
     @Autowired
     private TransferwiseClient transferwiseClient;
 
-//    @GetMapping({"/test"})
-//    public ResponseEntity<Integer> getExpansions() {
-//        CurrencyUnit unit = Monetary.getCurrency("GBP");
-//        TransferwisePaymentInstruction transferwisePaymentInstruction = new TransferwisePaymentInstruction(
-//                45
-//                , "GBP"
-//                , new BigDecimal("25.45")
-//                , "Ann Johnson"
-//                //ensure this is mapped over with no dashes
-//                , "231470"
-//                , "28821822"
-//        );
-//        transferwiseClient.payInstruction(transferwisePaymentInstruction);
-//        return new ResponseEntity<>(36, HttpStatus.OK);
-//    }
+    @GetMapping({"/test"})
+    public ResponseEntity getExpansions() {
+        List<TransferwiseTransferResponse> completedTransfers = transferwiseClient.getCompletedTransfers();
+        List<TransferwiseTransferResponse> incompletedTransfers = transferwiseClient.getIncompleteTransfers();
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
     @PostMapping({"/submit"})
     public ResponseEntity submitPayment(@RequestBody @Valid TransferwisePaymentInstruction transferwisePaymentInstruction) {
         System.out.println(transferwisePaymentInstruction);

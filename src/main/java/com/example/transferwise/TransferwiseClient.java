@@ -15,6 +15,7 @@ import lombok.Setter;
 import org.springframework.web.client.RestOperations;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import javax.money.CurrencyUnit;
@@ -25,6 +26,14 @@ public class TransferwiseClient {
     final private static String GBP_CURRENCY_CODE = "GBP";
     final private static String EUR_CURRENCY_CODE = "EUR";
     final private static String USD_CURRENCY_CODE = "USD";
+
+    private static final String INCOMING_PAYMENT_WAITING_STATUS = "incoming_payment_waiting";
+    private static final String PROCESSING_STATUS = "processing";
+    private static final String FUNDS_CONVERTED_STATUS = "funds_converted";
+    private static final String OUTGOING_PAYMENT_SENT_STATUS = "outgoing_payment_sent";
+    private static final String CANCELLED_PAYMENT_STATUS = "cancelled";
+    private static final String FUNDS_REFUNDED_STATUS = "funds_refunded";
+    private static final String BOUNCED_BACK_STATUS = "bounced_back";
 
 
     private TransferwiseProfile transferwiseProfile;
@@ -47,7 +56,6 @@ public class TransferwiseClient {
             TransferwiseTransferResponse transferResponse = this.submitTransfer(transfer);
             TransferwiseTransferStatusResponse fundTransferResponse = fundTransfer(transferResponse.getId(), this.transferwiseProfile.getId());
             TransferwiseTransferStatusResponse transferStatusResponse = this.transferwiseApi.checkTransferStatus(transferResponse.getId());
-            this.transferwiseApi.getTransfersInProgress(transferwiseProfile.getId());
         } catch (TransferwiseAddRecipientException e) {
             // send back to kafka error with details??
             System.out.println("Recipient error");
@@ -80,19 +88,37 @@ public class TransferwiseClient {
     }
 
     private TransferwiseRecipient createRecipient(int profileId, TransferwisePaymentInstruction paymentInstruction) throws TransferwiseCurrencyException {
-        return new TransferwiseRecipient(
-                paymentInstruction.getTargetCurrency()
-                // This will depend on where the payment is going to i.e EU or UK
-                , TransferwiseRecipientType.sort_code
-                , profileId
-                , paymentInstruction.getAccountHolderName()
-                , this.createBankDetails(paymentInstruction)
-        );
+        switch (paymentInstruction.getTargetCurrency()) {
+            case GBP_CURRENCY_CODE:
+                return new TransferwiseRecipient(
+                        paymentInstruction.getTargetCurrency()
+                        , TransferwiseRecipientType.sort_code
+                        , profileId
+                        , paymentInstruction.getAccountHolderName()
+                        , this.createBankGBPDetails(paymentInstruction)
+                );
+            case EUR_CURRENCY_CODE:
+                return new TransferwiseRecipient(
+                        paymentInstruction.getTargetCurrency()
+                        , TransferwiseRecipientType.iban
+                        , profileId
+                        , paymentInstruction.getAccountHolderName()
+                        , this.createBankEURDetails(paymentInstruction)
+                );
+            case USD_CURRENCY_CODE:
+                return new TransferwiseRecipient(
+                        paymentInstruction.getTargetCurrency()
+                        , TransferwiseRecipientType.aba
+                        , profileId
+                        , paymentInstruction.getAccountHolderName()
+                        , this.createBankUSDDetails(paymentInstruction)
+                );
+            default:
+                throw new TransferwiseCurrencyException("Currency Not Supported");
+        }
     }
 
     private TransferwiseRecipientResponse submitRecipient(TransferwiseRecipient transferwiseRecipient) throws TransferwiseAddRecipientException {
-        // here we can check which country we are going to
-        //type doesnt work
         return transferwiseApi.addRecipient(transferwiseRecipient);
     }
 
@@ -124,35 +150,48 @@ public class TransferwiseClient {
         return accountBalance.isPresent() ? accountBalance.get().getAmount().getValue() : new BigDecimal(0);
     }
 
-    private TransferwiseBankDetails createBankDetails(TransferwisePaymentInstruction paymentInstruction) throws TransferwiseCurrencyException {
-        switch (paymentInstruction.getTargetCurrency()){
-            case GBP_CURRENCY_CODE:
-                return new TransferwiseGBPBankDetails(
-                    paymentInstruction.getSortCode()
-                    , paymentInstruction.getAccountNumber()
-                    , "BUSINESS"
-                );
-            case EUR_CURRENCY_CODE:
-                return new TransferwiseEURBankDetails(
-                        paymentInstruction.getIBAN()
-                        ,"BUSINESS"
-                );
-            case USD_CURRENCY_CODE:
-                return new TransferwiseUSDBankDetails(
-                        paymentInstruction.getAbartn()
-                        ,paymentInstruction.getAccountNumber()
-                        , paymentInstruction.getAccountType()
-                        , new TransferwiseBankDetailsAddress(
-                                paymentInstruction.getCountry()
-                                ,paymentInstruction.getCity()
-                                ,paymentInstruction.getCity()
-                                ,paymentInstruction.getFirstLine())
-                        ,"BUSINESS"
-                );
-            default:
-                throw new TransferwiseCurrencyException("Currency Not Supported");
-        }
+    private TransferwiseBankDetails createBankGBPDetails(TransferwisePaymentInstruction paymentInstruction) {
+        return new TransferwiseGBPBankDetails(
+                paymentInstruction.getSortCode()
+                , paymentInstruction.getAccountNumber()
+                , "BUSINESS"
+        );
     }
 
+    private TransferwiseBankDetails createBankUSDDetails(TransferwisePaymentInstruction paymentInstruction) {
+        return new TransferwiseUSDBankDetails(
+                paymentInstruction.getAbartn()
+                , paymentInstruction.getAccountNumber()
+                , "CHECKING"
+                , new TransferwiseBankDetailsAddress(
+                paymentInstruction.getCountry()
+                , paymentInstruction.getCity()
+                , paymentInstruction.getPostCode()
+                , paymentInstruction.getFirstLine())
+                , "PRIVATE"
+        );
+    }
+
+    private TransferwiseBankDetails createBankEURDetails(TransferwisePaymentInstruction paymentInstruction) {
+        return new TransferwiseEURBankDetails(
+                paymentInstruction.getIBAN()
+                , "BUSINESS"
+        );
+    }
+
+    public List<TransferwiseTransferResponse> getIncompleteTransfers() {
+        return this.transferwiseApi.getTransfersByStatus(
+                this.transferwiseProfile.getId()
+                , INCOMING_PAYMENT_WAITING_STATUS
+                , PROCESSING_STATUS
+                , FUNDS_CONVERTED_STATUS
+                , FUNDS_REFUNDED_STATUS
+                , BOUNCED_BACK_STATUS
+        );
+    }
+
+    public List<TransferwiseTransferResponse> getCompletedTransfers() {
+        return this.transferwiseApi.getTransfersByStatus(this.transferwiseProfile.getId(), OUTGOING_PAYMENT_SENT_STATUS);
+    }
 
 }

@@ -16,8 +16,10 @@ import org.springframework.http.*;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestOperations;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 @AllArgsConstructor
 @NoArgsConstructor
@@ -31,14 +33,6 @@ public class TransferwiseApi {
     private static final String TRANSFERS_ENDPOINT = "transfers";
     private static final String PAYMENTS_ENDPOINT = "payments";
     private static final String ACCOUNT_BALANCE_ENDPOINT = "borderless-accounts?profileId=";
-    private static final String INCOMING_PAYMENT_WAITING = "incoming_payment_waiting";
-    private static final String PROCESSING_STATUS = "processing";
-    private static final String FUNDS_CONVERTED_STATUS = "funds_converted";
-    private static final String OUTGOING_PAYMENT_SENT_STATUS = "outgoing_payment_sent";
-    private static final String CANCELLED_PAYMENT = "cancelled";
-    private static final String FUNDS_REFUNDED = "funds_refunded";
-    private static final String BOUNCED_BACK_STATUS = "bounced_back";
-
 
     private RestOperations restOps;
     private AuthToken authToken;
@@ -153,12 +147,9 @@ public class TransferwiseApi {
         return Objects.requireNonNull(responseEntity.getBody()).get(0);
     }
 
-    //could use varargs here.
-    List<TransferwiseTransferResponse> getTransfersInProgress(int profileId) {
+    List<TransferwiseTransferResponse> getTransfersByStatus( int profileId, String... args) {
+        String statusQueryString = String.join(",", args);
         HttpEntity entity = new HttpEntity<>(this.authToken.getHttpHeaders());
-        String statusQueryString = INCOMING_PAYMENT_WAITING + "," + PROCESSING_STATUS + "," + FUNDS_CONVERTED_STATUS + "," +
-                FUNDS_REFUNDED + "," + BOUNCED_BACK_STATUS;
-        System.out.println(BASE_URL + TRANSFERS_ENDPOINT + "/?profile=" + profileId + "&status=" + statusQueryString);
         ResponseEntity<List<TransferwiseTransferResponse>> responseEntity = this.restOps.exchange(
                 BASE_URL + TRANSFERS_ENDPOINT + "/?profile=" + profileId + "&status=" + statusQueryString
                 , HttpMethod.GET

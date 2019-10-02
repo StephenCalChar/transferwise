@@ -13,13 +13,13 @@ public class TransferwiseUSDBankDetails extends TransferwiseBankDetails {
     private String abartn;
     private String accountNumber;
     private String accountType;
-    private TransferwiseBankDetailsAddress transferwiseBankDetailsAddress;
+    private TransferwiseBankDetailsAddress address;
     public TransferwiseUSDBankDetails(String abartn, String accountNumber, String accountType,
-                                      TransferwiseBankDetailsAddress transferwiseBankDetailsAddress, String legalType){
+                                      TransferwiseBankDetailsAddress address, String legalType){
         super(legalType);
         this.abartn = abartn;
         this.accountNumber = accountNumber;
         this.accountType = accountType;
-        this.transferwiseBankDetailsAddress = transferwiseBankDetailsAddress;
+        this.address = address;
     }
 }
