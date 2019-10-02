@@ -33,7 +33,5 @@ public class TransferwisePaymentInstruction {
         this.accountHolderName=accountHolderName;
         this.sortCode=sortCode;
         this.accountNumber=accountNumber;
-
     }
-
 }

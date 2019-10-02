@@ -7,7 +7,9 @@ import com.example.transferwise.model.quote.SubmitQuoteException;
 import com.example.transferwise.model.quote.TransferWiseQuoteResponse;
 import com.example.transferwise.model.quote.TransferwiseQuote;
 import com.example.transferwise.model.recipient.*;
+import com.example.transferwise.model.recipient.BankDetails.TransferwiseEURBankDetails;
 import com.example.transferwise.model.recipient.BankDetails.TransferwiseGBPBankDetails;
+import com.example.transferwise.model.recipient.BankDetails.TransferwiseUSDBankDetails;
 import com.example.transferwise.model.transfer.TransferwiseFundTransferException;
 import com.example.transferwise.model.transfer.TransferwiseTransfer;
 import com.example.transferwise.model.transfer.TransferwiseTransferResponse;
@@ -43,19 +45,27 @@ public class TransferwiseClientTest {
     private ArgumentCaptor<TransferwiseRecipient<TransferwiseGBPBankDetails>> captorGBPRecipient;
 
     @Captor
+    private ArgumentCaptor<TransferwiseRecipient<TransferwiseUSDBankDetails>> captorUSDRecipient;
+
+    @Captor
+    private ArgumentCaptor<TransferwiseRecipient<TransferwiseEURBankDetails>> captorEURRecipient;
+
+    @Captor
     private ArgumentCaptor<TransferwiseQuote> captorQuote;
 
     @InjectMocks
     private TransferwiseClient transferwiseClient;
 
+    private int transferId;
+
     @BeforeEach
     void setUp() {
+        transferId =5;
     }
 
     @Test
     void checkGBPTransferCreated() throws TransferwiseAddRecipientException, SubmitQuoteException, TransferwiseCurrencyException, TransferwiseFundTransferException {
-        int transferId = 5;
-        TransferwisePaymentInstruction paymentInstruction = this.getGBPPaymentInstruction();
+        TransferwisePaymentInstruction paymentInstruction = this.getGBPPaymentInstruction(4);
         TransferwiseTransferStatusResponse transferStatusResponse = new TransferwiseTransferStatusResponse();
 
         when(transferwiseApi.addRecipient(any(TransferwiseRecipient.class))).thenReturn(this.createRecipientResponse(1));
@@ -78,6 +88,59 @@ public class TransferwiseClientTest {
     }
 
     @Test
+    void checkUSDTransferCreated() throws TransferwiseAddRecipientException, SubmitQuoteException, TransferwiseCurrencyException, TransferwiseFundTransferException {
+        TransferwisePaymentInstruction paymentInstruction = this.getUSDPaymentInstruction(1);
+        TransferwiseTransferStatusResponse transferStatusResponse = new TransferwiseTransferStatusResponse();
+
+        when(transferwiseApi.addRecipient(any(TransferwiseRecipient.class))).thenReturn(this.createRecipientResponse(1));
+        when(transferwiseApi.submitQuote(any(TransferwiseQuote.class))).thenReturn(createQuoteResponse(2));
+        when(transferwiseApi.submitTransfer(any(TransferwiseTransfer.class))).thenReturn(createTransferResponse(transferId));
+        when(transferwiseApi.fundTransfer(transferId)).thenReturn(transferStatusResponse);
+        when(transferwiseApi.checkTransferStatus(transferId)).thenReturn(transferStatusResponse);
+        assertEquals(transferwiseClient.payInstruction(paymentInstruction), transferStatusResponse);
+
+        verify(transferwiseApi, times(1)).addRecipient(captorUSDRecipient.capture());
+        verify(transferwiseApi, times(1)).submitQuote(captorQuote.capture());
+        verify(transferwiseApi, times(1)).submitTransfer(any(TransferwiseTransfer.class));
+        verify(transferwiseApi, times(1)).fundTransfer(transferId);
+
+        assertEquals(captorUSDRecipient.getValue().getCurrency(), paymentInstruction.getTargetCurrency());
+        assertEquals(captorUSDRecipient.getValue().getAccountHolderName(), paymentInstruction.getAccountHolderName());
+        assertEquals(captorUSDRecipient.getValue().getDetails().getAbartn(), paymentInstruction.getAbartn());
+        assertEquals(captorUSDRecipient.getValue().getDetails().getAccountNumber(), paymentInstruction.getAccountNumber());
+        assertEquals(captorUSDRecipient.getValue().getDetails().getAddress().getFirstLine(), paymentInstruction.getFirstLine());
+        assertEquals(captorUSDRecipient.getValue().getDetails().getAddress().getCity(), paymentInstruction.getCity());
+        assertEquals(captorUSDRecipient.getValue().getDetails().getAddress().getCountry(), paymentInstruction.getCountry());
+        assertEquals(captorUSDRecipient.getValue().getDetails().getAddress().getPostCode(), paymentInstruction.getPostCode());
+        assertEquals(captorQuote.getValue().getTargetAmount(), paymentInstruction.getAmount());
+    }
+
+    @Test
+    void checkEURTransferCreated() throws TransferwiseAddRecipientException, SubmitQuoteException, TransferwiseCurrencyException, TransferwiseFundTransferException {
+        TransferwisePaymentInstruction paymentInstruction = this.getEURPaymentInstruction(4);
+        TransferwiseTransferStatusResponse transferStatusResponse = new TransferwiseTransferStatusResponse();
+
+        when(transferwiseApi.addRecipient(any(TransferwiseRecipient.class))).thenReturn(this.createRecipientResponse(1));
+        when(transferwiseApi.submitQuote(any(TransferwiseQuote.class))).thenReturn(createQuoteResponse(2));
+        when(transferwiseApi.submitTransfer(any(TransferwiseTransfer.class))).thenReturn(createTransferResponse(transferId));
+        when(transferwiseApi.fundTransfer(transferId)).thenReturn(transferStatusResponse);
+        when(transferwiseApi.checkTransferStatus(transferId)).thenReturn(transferStatusResponse);
+        assertEquals(transferwiseClient.payInstruction(paymentInstruction), transferStatusResponse);
+
+        verify(transferwiseApi, times(1)).addRecipient(captorEURRecipient.capture());
+        verify(transferwiseApi, times(1)).submitQuote(captorQuote.capture());
+        verify(transferwiseApi, times(1)).submitTransfer(any(TransferwiseTransfer.class));
+        verify(transferwiseApi, times(1)).fundTransfer(transferId);
+
+        assertEquals(captorEURRecipient.getValue().getCurrency(), paymentInstruction.getTargetCurrency());
+        assertEquals(captorEURRecipient.getValue().getAccountHolderName(), paymentInstruction.getAccountHolderName());
+        assertEquals(captorEURRecipient.getValue().getDetails().getIBAN(), paymentInstruction.getIBAN());
+        assertEquals(captorQuote.getValue().getTargetAmount(), paymentInstruction.getAmount());
+    }
+
+
+
+    @Test
     void checkUnknownCurrencyThrowsCurrencyError() {
         TransferwisePaymentInstruction paymentInstruction = new TransferwisePaymentInstruction(
                 45
@@ -92,14 +155,50 @@ public class TransferwiseClientTest {
         });
     }
 
-    private TransferwisePaymentInstruction getGBPPaymentInstruction(){
+    private TransferwisePaymentInstruction getGBPPaymentInstruction(int id){
         return new TransferwisePaymentInstruction(
-                45
+                id
                 , "GBP"
                 , new BigDecimal("45.24")
                 , "Bill Smith"
                 , "40-30-20"
                 , "12345678"
+        );
+    }
+
+    private TransferwisePaymentInstruction getUSDPaymentInstruction(int id){
+        return new TransferwisePaymentInstruction(
+                id
+                , "USD"
+                , new BigDecimal("45.00")
+                , "Mike Bobby"
+                , null
+                , "12345678"
+                ,"GB"
+                ,"London"
+                ,"10025"
+                ,"50 Branson Ave"
+                ,null
+                ,"111000025"
+                ,null
+        );
+    }
+
+    private TransferwisePaymentInstruction getEURPaymentInstruction(int id){
+        return new TransferwisePaymentInstruction(
+                id
+                , "EUR"
+                , new BigDecimal("45.64")
+                , "Rob Taylor"
+                , null
+                , null
+                ,null
+                ,null
+                ,null
+                ,null
+                ,"DE89370400440532013000"
+                ,null
+                ,null
         );
     }
 
