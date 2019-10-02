@@ -43,19 +43,15 @@ public class TransferwiseClientTest {
 
     @Test
     void checkGBPRecipientCreated() {
-        TransferwiseProfile transferwiseProfile = new TransferwiseProfile(1, "Business");
-        when(transferwiseApi.getTransferwiseProfile()).thenReturn(transferwiseProfile);
-//        transferwiseClient = new TransferwiseClient(restTemplate);
-//        TransferwisePaymentInstruction paymentInstruction = new TransferwisePaymentInstruction(
-//                45
-//                , "GBP"
-//                , new BigDecimal(45.24)
-//                , "Bill Smith"
-//                , "40-30-20"
-//                , "12345678"
-//        );
-//        transferwiseClient.payInstruction(paymentInstruction);
-
-
+        transferwiseClient = new TransferwiseClient(restTemplate);
+        TransferwisePaymentInstruction paymentInstruction = new TransferwisePaymentInstruction(
+                45
+                , "GBP"
+                , new BigDecimal(45.24)
+                , "Bill Smith"
+                , "40-30-20"
+                , "12345678"
+        );
+        //transferwiseClient.payInstruction(paymentInstruction);
     }
 }

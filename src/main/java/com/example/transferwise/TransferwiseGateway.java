@@ -34,10 +34,9 @@ public class TransferwiseGateway {
     }
     @PostMapping({"/submit"})
     public ResponseEntity submitPayment(@RequestBody @Valid TransferwisePaymentInstruction transferwisePaymentInstruction) {
-        System.out.println(transferwisePaymentInstruction);
         try {
             transferwiseClient.payInstruction(transferwisePaymentInstruction);
-            return new ResponseEntity<>( HttpStatus.OK);
+            return new ResponseEntity<>( "",HttpStatus.OK);
             //change this.
         }catch(Exception e){
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);

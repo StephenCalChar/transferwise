@@ -35,36 +35,38 @@ public class TransferwiseClient {
     private static final String FUNDS_REFUNDED_STATUS = "funds_refunded";
     private static final String BOUNCED_BACK_STATUS = "bounced_back";
 
-
-    private TransferwiseProfile transferwiseProfile;
+    // Add this through environment variables
+    private final int PROFILE_ID = 0;
     private TransferwiseApi transferwiseApi;
 
     public TransferwiseClient(RestOperations restOperations) {
         this.transferwiseApi = new TransferwiseApi(restOperations);
-        this.transferwiseProfile = this.transferwiseApi.getTransferwiseProfile();
     }
 
     // Do you want to return the transfer status from here? Maybe make enum.
     public void payInstruction(TransferwisePaymentInstruction paymentInstruction) {
-        // Do we make certain props in the bank details not null so they crash?
+        // Its possible we want to just set up the payments in the first instance and then have another
+        // option for them all to be paid once their is definitely sufficient funds in the account.
         try {
-            TransferwiseRecipient recipient = this.createRecipient(this.transferwiseProfile.getId(), paymentInstruction);
+            TransferwiseRecipient recipient = this.createRecipient(PROFILE_ID, paymentInstruction);
             TransferwiseRecipientResponse recipientResponse = this.submitRecipient(recipient);
-            TransferwiseQuote quote = createQuote(this.transferwiseProfile.getId(), paymentInstruction);
+            TransferwiseQuote quote = createQuote(PROFILE_ID, paymentInstruction);
             TransferWiseQuoteResponse quoteResponse = this.submitQuote(quote);
             TransferwiseTransfer transfer = this.createTransfer(recipientResponse.getId(), quoteResponse.getId(), paymentInstruction);
             TransferwiseTransferResponse transferResponse = this.submitTransfer(transfer);
-            TransferwiseTransferStatusResponse fundTransferResponse = fundTransfer(transferResponse.getId(), this.transferwiseProfile.getId());
+            TransferwiseTransferStatusResponse fundTransferResponse = fundTransfer(transferResponse.getId(), PROFILE_ID);
             TransferwiseTransferStatusResponse transferStatusResponse = this.transferwiseApi.checkTransferStatus(transferResponse.getId());
         } catch (TransferwiseAddRecipientException e) {
             // send back to kafka error with details??
-            System.out.println("Recipient error");
+            e.printStackTrace();
         } catch (SubmitQuoteException e) {
             // send back details to kafka?
-            System.out.println("quote exception");
+            e.printStackTrace();
         } catch (TransferwiseFundTransferException e) {
             // Either fund account or send back to Kafka that it has failed
+            e.printStackTrace();
         } catch (TransferwiseCurrencyException e) {
+            e.printStackTrace();
             // unrecognised currency
         }
 
@@ -181,7 +183,7 @@ public class TransferwiseClient {
 
     public List<TransferwiseTransferResponse> getIncompleteTransfers() {
         return this.transferwiseApi.getTransfersByStatus(
-                this.transferwiseProfile.getId()
+                PROFILE_ID
                 , INCOMING_PAYMENT_WAITING_STATUS
                 , PROCESSING_STATUS
                 , FUNDS_CONVERTED_STATUS
@@ -191,7 +193,7 @@ public class TransferwiseClient {
     }
 
     public List<TransferwiseTransferResponse> getCompletedTransfers() {
-        return this.transferwiseApi.getTransfersByStatus(this.transferwiseProfile.getId(), OUTGOING_PAYMENT_SENT_STATUS);
+        return this.transferwiseApi.getTransfersByStatus(PROFILE_ID, OUTGOING_PAYMENT_SENT_STATUS);
     }
 
 }
