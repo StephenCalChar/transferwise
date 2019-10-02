@@ -54,24 +54,8 @@ public class TransferwiseClient {
         TransferWiseQuoteResponse quoteResponse = this.submitQuote(quote);
         TransferwiseTransfer transfer = this.createTransfer(recipientResponse.getId(), quoteResponse.getId(), paymentInstruction);
         TransferwiseTransferResponse transferResponse = this.submitTransfer(transfer);
-        TransferwiseTransferStatusResponse fundTransferResponse = this.fundTransfer(transferResponse.getId(), PROFILE_ID);
+        TransferwiseTransferStatusResponse fundTransferResponse = this.fundTransfer(transferResponse.getId(), PROFILE_ID, quote);
         return this.transferwiseApi.checkTransferStatus(transferResponse.getId());
-
-//        } catch (TransferwiseAddRecipientException e) {
-//            // send back to kafka error with details??
-//            e.printStackTrace();
-//        } catch (SubmitQuoteException e) {
-//            // send back details to kafka?
-//            e.printStackTrace();
-//        } catch (TransferwiseFundTransferException e) {
-//            // Either fund account or send back to Kafka that it has failed
-//            e.printStackTrace();
-//        } catch (TransferwiseCurrencyException e) {
-//            e.printStackTrace();
-//            // unrecognised currency
-//        }
-
-
     }
 
     private TransferwiseQuote createQuote(int profileId, TransferwisePaymentInstruction paymentInstruction) {
@@ -139,18 +123,22 @@ public class TransferwiseClient {
         return this.transferwiseApi.submitTransfer(transfer);
     }
 
-    private TransferwiseTransferStatusResponse fundTransfer(int transferId, int accountId) throws TransferwiseFundTransferException {
+    private TransferwiseTransferStatusResponse fundTransfer(int transferId, int accountId, TransferwiseQuote quote) throws TransferwiseFundTransferException {
         //maybe check balance or pay in balance here
+//        if(this.checkBalanceByCurrency(quote.getTarget(), this.PROFILE_ID).compareTo(quote.getTargetAmount())>= 0){
+//            return this.transferwiseApi.fundTransfer(transferId);
+//        }
         return this.transferwiseApi.fundTransfer(transferId);
+        //throw new TransferwiseFundTransferException("Insufficient Funds");
     }
 
-    private BigDecimal checkBalanceByCurrency(CurrencyUnit currency, int accountId) {
+    BigDecimal checkBalanceByCurrency(String currency, int accountId) throws TransferwiseCurrencyException {
         TransferwiseCheckBalanceResponse checkBalanceResponse = this.transferwiseApi.checkAccountBalance(accountId);
-        Optional<TransferwiseAccountBalance> accountBalance = checkBalanceResponse.getBalances().stream()
-                .filter(balance -> balance.getCurrency().equals(currency.toString()))
-                .findFirst();
-        //not sure if to just return 0 or return null here.
-        return accountBalance.isPresent() ? accountBalance.get().getAmount().getValue() : new BigDecimal(0);
+        return checkBalanceResponse.getBalances().stream()
+                .filter(balance -> balance.getCurrency().equals(currency))
+                .map(balanceResponse-> balanceResponse.getAmount().getValue())
+                .findFirst()
+                .orElseThrow(()->new TransferwiseCurrencyException("No Account setup for this Currency"));
     }
 
     private TransferwiseBankDetails createBankGBPDetails(TransferwisePaymentInstruction paymentInstruction) {

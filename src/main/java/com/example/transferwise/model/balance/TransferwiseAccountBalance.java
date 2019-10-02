@@ -24,6 +24,4 @@ public class TransferwiseAccountBalance {
     private String currency;
     private TransferwiseCurrencyAmount amount;
     private TransferwiseCurrencyAmount reservedAmount;
-    // not sure what this is "group" or why we would even need.
-    //private bankDetails;
 }

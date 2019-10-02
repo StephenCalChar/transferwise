@@ -15,6 +15,5 @@ public class TransferwiseRecipient<T extends  TransferwiseBankDetails>  {
     private TransferwiseRecipientType type;
     private Integer profile;
     private String accountHolderName;
-    // this will need either an interface or inheritance further down the line as can change depending on region
     private T details;
 }
